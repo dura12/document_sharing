@@ -203,7 +203,39 @@ export function TextEditor() {
       )}
 
       <div className="editor-main-layout">
-        <div className="editor-workspace" ref={editorRef} />
+        <div
+          className={`editor-workspace ${role === "viewer" ? "role-viewer" : role === "commenter" ? "role-commenter" : ""}`}
+          ref={editorRef}
+          onKeyDownCapture={(e) => {
+            if (role === "viewer" || role === "commenter") {
+              // Allow Ctrl/Cmd + C (copy) and Ctrl/Cmd + A (select all)
+              if (
+                (e.ctrlKey || e.metaKey) &&
+                ["c", "C", "a", "A"].includes(e.key)
+              ) {
+                return;
+              }
+              // Allow navigation arrows and page scroll keys
+              if (
+                [
+                  "ArrowUp",
+                  "ArrowDown",
+                  "ArrowLeft",
+                  "ArrowRight",
+                  "Home",
+                  "End",
+                  "PageUp",
+                  "PageDown",
+                ].includes(e.key)
+              ) {
+                return;
+              }
+              // Block all typing, deletion, formatting shortcuts
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          }}
+        />
 
         {/* Comment button docked to the right of the document */}
         {!isCommentsOpen && (

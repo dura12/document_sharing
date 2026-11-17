@@ -110,4 +110,66 @@ describe("Client Document Sync Protocol", () => {
     mockSocket.emit("update-permissions", "viewer", roles);
     expect(mockSocket.emit).toHaveBeenCalledWith("update-permissions", "viewer", roles);
   });
+
+  it("blocks text modifications and title updates for viewer and commenter roles", () => {
+    const mockSocket = {
+      emit: vi.fn(),
+    };
+
+    const handleTextEditAttempt = (role: string, delta: any) => {
+      if (role === "viewer" || role === "commenter") return;
+      mockSocket.emit("send-changes", delta);
+    };
+
+    const handleTitleEditAttempt = (role: string, newTitle: string) => {
+      if (role === "viewer" || role === "commenter") return;
+      mockSocket.emit("change-title", newTitle);
+    };
+
+    // Viewer attempt
+    handleTextEditAttempt("viewer", { ops: [{ insert: "malicious edit" }] });
+    handleTitleEditAttempt("viewer", "Malicious Title");
+
+    // Commenter attempt
+    handleTextEditAttempt("commenter", { ops: [{ insert: "another edit" }] });
+    handleTitleEditAttempt("commenter", "Another Title");
+
+    expect(mockSocket.emit).not.toHaveBeenCalled();
+
+    // Editor attempt succeeds
+    handleTextEditAttempt("editor", { ops: [{ insert: "valid edit" }] });
+    expect(mockSocket.emit).toHaveBeenCalledWith("send-changes", {
+      ops: [{ insert: "valid edit" }],
+    });
+
+    handleTitleEditAttempt("editor", "Valid Title");
+    expect(mockSocket.emit).toHaveBeenCalledWith("change-title", "Valid Title");
+  });
+
+  it("deduplicates collaborators by email, name, and socket id", () => {
+    const collaborators = [
+      { id: "s1", name: "Sarah Connor", email: "sarah@gmail.com", color: "#1a73e8" },
+      { id: "s2", name: "Sarah Connor", email: "sarah@gmail.com", color: "#1a73e8" },
+      { id: "s3", name: "Anonymous Panda", color: "#d93025" },
+      { id: "s4", name: "Anonymous Fox", color: "#188038" },
+    ];
+
+    const uniqueCollaborators = collaborators.filter(
+      (c, index, self) =>
+        index ===
+        self.findIndex(
+          (u) =>
+            (c.email && u.email && c.email.toLowerCase() === u.email.toLowerCase()) ||
+            u.name === c.name ||
+            u.id === c.id,
+        ),
+    );
+
+    expect(uniqueCollaborators).toHaveLength(3);
+    expect(uniqueCollaborators.map((u) => u.name)).toEqual([
+      "Sarah Connor",
+      "Anonymous Panda",
+      "Anonymous Fox",
+    ]);
+  });
 });

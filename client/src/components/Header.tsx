@@ -114,7 +114,14 @@ export function Header({
   };
 
   const uniqueCollaborators = collaborators.filter(
-    (c, index, self) => index === self.findIndex((u) => u.name === c.name),
+    (c, index, self) =>
+      index ===
+      self.findIndex(
+        (u) =>
+          (c.email && u.email && c.email.toLowerCase() === u.email.toLowerCase()) ||
+          u.name === c.name ||
+          u.id === c.id,
+      ),
   );
 
   const isReadOnly = role === "viewer";

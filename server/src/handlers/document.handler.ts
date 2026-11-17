@@ -61,6 +61,16 @@ const ANIMAL_NAMES = [
   "Dolphin",
 ];
 
+function getUserSessionKey(
+  user: UserPresence | null,
+  socketId: string,
+): string {
+  if (user?.email) {
+    return `email:${user.email.toLowerCase().trim()}`;
+  }
+  return `socket:${socketId}`;
+}
+
 function getRandomUser(socketId: string): UserPresence {
   const hash = Array.from(socketId).reduce(
     (acc, char) => acc + char.charCodeAt(0),
@@ -78,7 +88,11 @@ function getRandomUser(socketId: string): UserPresence {
 function computeUserRole(
   activeDoc: ActiveDocument,
   email?: string,
+  requestedRole?: UserRole,
 ): UserRole {
+  if (requestedRole === "viewer" || requestedRole === "commenter") {
+    return requestedRole;
+  }
   if (email && activeDoc.collaboratorRoles.has(email.toLowerCase().trim())) {
     return activeDoc.collaboratorRoles.get(email.toLowerCase().trim())!;
   }
@@ -256,9 +270,7 @@ export function registerDocumentHandlers(
     const activeDoc = activeDocuments.get(docId);
     if (!activeDoc) return;
 
-    const userKey = currentUser?.name
-      ? currentUser.name.toLowerCase().trim()
-      : socket.id;
+    const userKey = getUserSessionKey(currentUser, socket.id);
 
     const session = activeDoc.collaborators.get(userKey);
     if (session) {
@@ -302,7 +314,11 @@ export function registerDocumentHandlers(
     const activeDoc = await getOrCreateActiveDocument(documentId);
     currentDocId = documentId;
 
-    const assignedRole = computeUserRole(activeDoc, userOverride?.email);
+    const assignedRole = computeUserRole(
+      activeDoc,
+      userOverride?.email,
+      userOverride?.role,
+    );
 
     currentUser = {
       ...getRandomUser(socket.id),
@@ -312,9 +328,7 @@ export function registerDocumentHandlers(
       role: assignedRole,
     };
 
-    const userKey = currentUser.name
-      ? currentUser.name.toLowerCase().trim()
-      : socket.id;
+    const userKey = getUserSessionKey(currentUser, socket.id);
 
     const existingSession = activeDoc.collaborators.get(userKey);
     if (existingSession) {

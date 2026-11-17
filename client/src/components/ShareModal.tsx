@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { UserPresence, UserRole, CollaboratorRoleAssignment } from "@/types";
 
 interface ShareModalProps {
@@ -28,6 +28,7 @@ export function ShareModal({
   currentUserRole = "editor",
 }: ShareModalProps) {
   const [copied, setCopied] = useState(false);
+  const [copiedRole, setCopiedRole] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<UserRole>("editor");
   const [localDefaultRole, setLocalDefaultRole] = useState<UserRole>(defaultRole);
@@ -36,17 +37,25 @@ export function ShareModal({
 
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Synchronize state whenever props change or modal reopens
+  useEffect(() => {
+    setLocalDefaultRole(defaultRole);
+    setLocalRoles(collaboratorRoles);
+  }, [defaultRole, collaboratorRoles, isOpen]);
+
   if (!isOpen) return null;
 
-  const shareUrl = window.location.href;
+  // Build the share link with the explicit role query parameter
+  const shareUrl = `${window.location.origin}/documents/${documentId}?role=${localDefaultRole}`;
+
   const canManageRoles =
     currentUserRole === "owner" || currentUserRole === "editor";
 
-  const handleCopy = async () => {
+  const copyText = async (text: string, label?: string) => {
     let success = false;
     if (navigator.clipboard && navigator.clipboard.writeText) {
       try {
-        await navigator.clipboard.writeText(shareUrl);
+        await navigator.clipboard.writeText(text);
         success = true;
       } catch {
         success = false;
@@ -55,6 +64,7 @@ export function ShareModal({
 
     if (!success && inputRef.current) {
       try {
+        inputRef.current.value = text;
         inputRef.current.select();
         inputRef.current.setSelectionRange(0, 99999);
         document.execCommand("copy");
@@ -65,8 +75,14 @@ export function ShareModal({
     }
 
     setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+    if (label) setCopiedRole(label);
+    setTimeout(() => {
+      setCopied(false);
+      setCopiedRole(null);
+    }, 2500);
   };
+
+  const handleCopy = () => copyText(shareUrl);
 
   const getUserInitials = (name: string) => {
     const parts = name.trim().split(/\s+/);
@@ -251,15 +267,63 @@ export function ShareModal({
             />
             <button
               type="button"
-              className={`btn-copy-link ${copied ? "copied" : ""}`}
+              className={`btn-copy-link ${copied && !copiedRole ? "copied" : ""}`}
               onClick={handleCopy}
             >
-              {copied ? "✓ Copied!" : "Copy Link"}
+              {copied && !copiedRole ? "✓ Copied!" : "Copy Link"}
             </button>
           </div>
+
+          <div className="share-quick-roles">
+            <span className="share-quick-label">Or copy direct link by role:</span>
+            <div className="share-quick-buttons">
+              <button
+                type="button"
+                className={`btn-role-copy ${copiedRole === "viewer" ? "copied" : ""}`}
+                onClick={() =>
+                  copyText(
+                    `${window.location.origin}/documents/${documentId}?role=viewer`,
+                    "viewer",
+                  )
+                }
+                title="Copy view-only link"
+              >
+                👁️ Viewer Link
+              </button>
+              <button
+                type="button"
+                className={`btn-role-copy ${copiedRole === "commenter" ? "copied" : ""}`}
+                onClick={() =>
+                  copyText(
+                    `${window.location.origin}/documents/${documentId}?role=commenter`,
+                    "commenter",
+                  )
+                }
+                title="Copy comment-only link"
+              >
+                💡 Commenter Link
+              </button>
+              <button
+                type="button"
+                className={`btn-role-copy ${copiedRole === "editor" ? "copied" : ""}`}
+                onClick={() =>
+                  copyText(
+                    `${window.location.origin}/documents/${documentId}?role=editor`,
+                    "editor",
+                  )
+                }
+                title="Copy full edit link"
+              >
+                ✏️ Editor Link
+              </button>
+            </div>
+          </div>
+
           {copied && (
             <span className="copy-success-hint">
-              Link copied! Paste this into another tab or incognito window.
+              {copiedRole
+                ? `✓ ${copiedRole.toUpperCase()} link copied to clipboard!`
+                : "✓ Link copied! Anyone with this link can access with selected role."}
             </span>
           )}
         </div>

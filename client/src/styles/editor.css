@@ -2332,6 +2332,312 @@ body {
 }
 
 /* ==========================================================================
+   ROLE LOCKS & RESTRICTED ACCESS STYLES
+   ========================================================================== */
+
+.editor-workspace.role-viewer .ql-toolbar.ql-snow,
+.editor-workspace.role-commenter .ql-toolbar.ql-snow {
+  pointer-events: none !important;
+  opacity: 0.45 !important;
+  filter: grayscale(1);
+  cursor: not-allowed;
+}
+
+.editor-workspace.role-viewer .ql-editor,
+.editor-workspace.role-commenter .ql-editor {
+  cursor: default !important;
+  user-select: text !important;
+}
+
+.doc-title-input:disabled {
+  cursor: default !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+/* Quick Role Link Buttons inside Share Modal */
+.share-quick-roles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  margin-bottom: 8px;
+}
+
+.share-quick-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #5f6368;
+}
+
+.share-quick-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-role-copy {
+  background-color: #f1f3f4;
+  color: #3c4043;
+  border: 1px solid #dadce0;
+  border-radius: 16px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+
+.btn-role-copy:hover {
+  background-color: #e8f0fe;
+  color: #1a73e8;
+  border-color: #d2e3fc;
+}
+
+.btn-role-copy.copied {
+  background-color: #e6f4ea;
+  color: #137333;
+  border-color: #ceead6;
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN & MOBILE OPTIMIZATIONS
+   ========================================================================== */
+
+/* Tablet & Medium Screens (<= 1024px) */
+@media screen and (max-width: 1024px) {
+  .editor-workspace .ql-editor {
+    width: calc(100% - 48px);
+    max-width: 8.5in;
+    margin: 20px auto 40px auto;
+  }
+}
+
+/* Tablet Portrait & Small Screens (<= 900px) */
+@media screen and (max-width: 900px) {
+  /* Toolbar: smoothly scrollable horizontally */
+  .editor-workspace .ql-toolbar.ql-snow {
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    padding: 6px 12px !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .editor-workspace .ql-toolbar.ql-snow::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .editor-workspace .ql-toolbar.ql-snow::-webkit-scrollbar-thumb {
+    background-color: #dadce0;
+    border-radius: 4px;
+  }
+
+  .editor-workspace .ql-toolbar.ql-snow .ql-formats {
+    margin-right: 8px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Responsive fluid page sheet */
+  .editor-workspace .ql-editor {
+    width: calc(100% - 32px) !important;
+    max-width: 100% !important;
+    margin: 16px auto 60px auto !important;
+    padding: 32px 24px !important;
+    min-height: 60vh !important;
+    font-size: 15px !important;
+  }
+
+  /* Comments dock floating button */
+  .doc-side-comment-dock {
+    top: auto !important;
+    bottom: 24px !important;
+    right: 20px !important;
+    z-index: 900 !important;
+  }
+
+  .btn-doc-side-comment {
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22) !important;
+  }
+
+  /* Comments Sidebar as slide-over drawer */
+  .comments-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    height: 100vh !important;
+    width: min(420px, 100vw) !important;
+    max-width: 100vw !important;
+    z-index: 1050 !important;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.25) !important;
+  }
+}
+
+/* Mobile Screens (<= 768px) */
+@media screen and (max-width: 768px) {
+  .doc-header {
+    padding: 6px 10px;
+    gap: 8px;
+  }
+
+  .doc-header-left {
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .doc-details-col {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .doc-title-row {
+    min-width: 0;
+    gap: 6px;
+  }
+
+  .doc-title-input {
+    max-width: 140px;
+    font-size: 15px;
+    padding: 2px 4px;
+  }
+
+  /* Horizontally scrollable menubar */
+  .doc-menubar {
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+    scrollbar-width: none;
+  }
+
+  .doc-menubar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .doc-header-right {
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  /* Hide count text on mobile, keep avatar circles */
+  .collaborator-count {
+    display: none !important;
+  }
+
+  .avatar-circle {
+    width: 28px;
+    height: 28px;
+    font-size: 10px;
+    margin-left: -6px;
+  }
+
+  .btn-share {
+    padding: 6px 12px;
+    font-size: 13px;
+    gap: 4px;
+  }
+
+  .role-notice-banner {
+    padding: 8px 12px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+}
+
+/* Small Mobile Screens (<= 480px) */
+@media screen and (max-width: 480px) {
+  .doc-header {
+    padding: 4px 8px;
+    gap: 6px;
+  }
+
+  .docs-logo svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .doc-title-input {
+    max-width: 105px;
+    font-size: 14px;
+  }
+
+  .status-pill {
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  .btn-share {
+    padding: 5px 10px;
+    font-size: 12px;
+    border-radius: 16px;
+  }
+
+  .btn-share svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .editor-workspace .ql-editor {
+    width: calc(100% - 16px) !important;
+    margin: 8px auto 80px auto !important;
+    padding: 20px 14px !important;
+    min-height: 50vh !important;
+    font-size: 14px !important;
+    box-shadow: 0 1px 3px rgba(60, 64, 67, 0.12) !important;
+  }
+
+  /* Modals full-width on mobile */
+  .share-modal-card {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    padding: 18px 14px !important;
+    margin: 8px !important;
+    max-height: 92vh !important;
+    overflow-y: auto !important;
+  }
+
+  .share-invite-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .share-invite-row input,
+  .share-invite-row select,
+  .share-invite-row button {
+    width: 100% !important;
+  }
+
+  .share-input-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .share-input-group input,
+  .share-input-group button {
+    width: 100% !important;
+  }
+
+  .auth-card {
+    width: 94vw !important;
+    padding: 24px 16px !important;
+  }
+
+  .vh-modal-content {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    padding: 16px !important;
+  }
+}
+
+/* ==========================================================================
    Print & PDF Styling
    ========================================================================== */
 

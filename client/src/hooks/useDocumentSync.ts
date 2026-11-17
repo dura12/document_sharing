@@ -42,13 +42,23 @@ export function useDocumentSync(
   socket: TypedSocket | null,
   quill: Quill | null,
   documentId: string,
-  userOverride?: { name: string; color: string; email?: string } | null,
+  userOverride?: { name: string; color: string; email?: string; role?: UserRole } | null,
 ): UseDocumentSyncReturn {
+  // Read role from query parameters (?role=viewer or ?role=commenter or ?role=editor)
+  const urlRole =
+    typeof window !== "undefined"
+      ? (new URLSearchParams(window.location.search).get("role") as UserRole | null)
+      : null;
+  const initialRole: UserRole =
+    urlRole === "viewer" || urlRole === "commenter"
+      ? urlRole
+      : userOverride?.role || "editor";
+
   const [title, setTitle] = useState<string>("Untitled Document");
   const [collaborators, setCollaborators] = useState<UserPresence[]>([]);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
-  const [role, setRole] = useState<UserRole>("editor");
+  const [role, setRole] = useState<UserRole>(initialRole);
   const [defaultRole, setDefaultRole] = useState<UserRole>("editor");
   const [collaboratorRoles, setCollaboratorRoles] = useState<
     CollaboratorRoleAssignment[]
@@ -57,12 +67,18 @@ export function useDocumentSync(
   const [versions, setVersions] = useState<DocumentVersion[]>([]);
   const [typingUsers, setTypingUsers] = useState<UserPresence[]>([]);
 
+  const roleRef = useRef<UserRole>(initialRole);
+  roleRef.current = role;
+
   const cursorsModuleRef = useRef<any>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Initialize cursor module reference when quill is ready
+  // Initialize cursor module reference and lock editor if restricted
   useEffect(() => {
     if (quill) {
+      if (roleRef.current === "viewer" || roleRef.current === "commenter") {
+        quill.disable();
+      }
       try {
         cursorsModuleRef.current = quill.getModule("cursors");
       } catch {
@@ -79,8 +95,9 @@ export function useDocumentSync(
     setSaveStatus("saving");
 
     const handleLoadDocument = (doc: DocumentData) => {
-      const assignedRole = doc.role || "editor";
+      const assignedRole = doc.role || roleRef.current || "editor";
       setRole(assignedRole);
+      roleRef.current = assignedRole;
       setDefaultRole(doc.defaultRole || "editor");
       setCollaboratorRoles(doc.collaboratorRoles || []);
       setComments(doc.comments || []);
@@ -102,7 +119,14 @@ export function useDocumentSync(
     };
 
     socket.on("load-document", handleLoadDocument);
-    socket.emit("get-document", documentId, userOverride || undefined);
+
+    const userPayload = userOverride
+      ? { ...userOverride, role: urlRole || userOverride.role }
+      : urlRole
+      ? { role: urlRole }
+      : undefined;
+
+    socket.emit("get-document", documentId, userPayload as any);
 
     return () => {
       socket.off("load-document", handleLoadDocument);
@@ -111,9 +135,11 @@ export function useDocumentSync(
     socket,
     quill,
     documentId,
+    urlRole,
     userOverride?.name,
     userOverride?.color,
     userOverride?.email,
+    userOverride?.role,
   ]);
 
   // Handle local text changes -> broadcast delta & typing indicator
@@ -128,7 +154,7 @@ export function useDocumentSync(
       if (source !== "user") return;
 
       // Viewer / Commenter cannot edit text
-      if (role === "viewer" || role === "commenter") return;
+      if (roleRef.current === "viewer" || roleRef.current === "commenter") return;
 
       setSaveStatus("saving");
       socket.emit("send-changes", delta);
@@ -303,6 +329,7 @@ export function useDocumentSync(
 
     const handleRoleAssigned = (newRole: UserRole) => {
       setRole(newRole);
+      roleRef.current = newRole;
       if (quill) {
         if (newRole === "viewer" || newRole === "commenter") {
           quill.disable();
@@ -352,7 +379,7 @@ export function useDocumentSync(
 
   const updateTitle = useCallback(
     (newTitle: string) => {
-      if (role === "viewer" || role === "commenter") return;
+      if (roleRef.current === "viewer" || roleRef.current === "commenter") return;
       setTitle(newTitle);
       document.title = `${newTitle} - Google Docs Clone`;
       if (socket) {
@@ -360,12 +387,12 @@ export function useDocumentSync(
         socket.emit("change-title", newTitle);
       }
     },
-    [socket, role],
+    [socket],
   );
 
   const addComment = useCallback(
     (text: string, selectionText?: string) => {
-      if (!socket) return;
+      if (!socket || roleRef.current === "viewer") return;
       const newComment: DocumentComment = {
         id: crypto.randomUUID(),
         author: {
@@ -386,7 +413,7 @@ export function useDocumentSync(
 
   const resolveComment = useCallback(
     (commentId: string) => {
-      if (!socket) return;
+      if (!socket || roleRef.current === "viewer") return;
       socket.emit("resolve-comment", commentId);
     },
     [socket],
@@ -394,7 +421,7 @@ export function useDocumentSync(
 
   const replyComment = useCallback(
     (commentId: string, reply: DocumentCommentReply) => {
-      if (!socket) return;
+      if (!socket || roleRef.current === "viewer") return;
       socket.emit("reply-comment", commentId, reply);
     },
     [socket],
@@ -402,7 +429,7 @@ export function useDocumentSync(
 
   const deleteComment = useCallback(
     (commentId: string) => {
-      if (!socket) return;
+      if (!socket || roleRef.current === "viewer") return;
       socket.emit("delete-comment", commentId);
     },
     [socket],
@@ -410,7 +437,7 @@ export function useDocumentSync(
 
   const createVersion = useCallback(
     (label?: string) => {
-      if (!socket) return;
+      if (!socket || roleRef.current === "viewer" || roleRef.current === "commenter") return;
       socket.emit("create-version", label);
     },
     [socket],
@@ -418,7 +445,7 @@ export function useDocumentSync(
 
   const restoreVersion = useCallback(
     (versionId: string) => {
-      if (!socket) return;
+      if (!socket || roleRef.current === "viewer" || roleRef.current === "commenter") return;
       socket.emit("restore-version", versionId);
     },
     [socket],
@@ -426,7 +453,7 @@ export function useDocumentSync(
 
   const updatePermissions = useCallback(
     (newDefaultRole: UserRole, roles: CollaboratorRoleAssignment[]) => {
-      if (!socket) return;
+      if (!socket || roleRef.current === "viewer" || roleRef.current === "commenter") return;
       socket.emit("update-permissions", newDefaultRole, roles);
     },
     [socket],
