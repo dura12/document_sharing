@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { DocumentComment, DocumentCommentReply } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 
@@ -12,6 +12,9 @@ interface CommentsSidebarProps {
   onReplyComment: (commentId: string, reply: DocumentCommentReply) => void;
   onDeleteComment: (commentId: string) => void;
   userRole?: string;
+  activeCommentId?: string | null;
+  onClearSelection?: () => void;
+  onCommentCardClick?: (commentId: string) => void;
 }
 
 export function CommentsSidebar({
@@ -24,12 +27,32 @@ export function CommentsSidebar({
   onReplyComment,
   onDeleteComment,
   userRole = "editor",
+  activeCommentId,
+  onClearSelection,
+  onCommentCardClick,
 }: CommentsSidebarProps) {
   const { user } = useAuth();
   const [tab, setTab] = useState<"open" | "resolved">("open");
   const [newCommentText, setNewCommentText] = useState("");
   const [replyTexts, setReplyTexts] = useState<Record<string, string>>({});
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
+
+  // When activeCommentId changes from document click, automatically select matching tab and scroll
+  useEffect(() => {
+    if (activeCommentId) {
+      const match = comments.find((c) => c.id === activeCommentId);
+      if (match) {
+        setTab(match.resolved ? "resolved" : "open");
+      }
+      const timer = setTimeout(() => {
+        const card = document.getElementById(`comment-card-${activeCommentId}`);
+        if (card) {
+          card.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [activeCommentId, comments]);
 
   if (!isOpen) return null;
 
@@ -118,8 +141,20 @@ export function CommentsSidebar({
         <form className="add-comment-card" onSubmit={handleCreateComment}>
           {selectedText && (
             <div className="selection-quote-box">
-              <span className="quote-label">Selected text:</span>
-              <p className="quote-content">"{selectedText}"</p>
+              <div className="selection-quote-header">
+                <span className="quote-label">Selected text:</span>
+                {onClearSelection && (
+                  <button
+                    type="button"
+                    className="btn-clear-selection"
+                    onClick={onClearSelection}
+                    title="Clear selected text"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              <p className="quote-content">&ldquo;{selectedText}&rdquo;</p>
             </div>
           )}
           <textarea
@@ -165,7 +200,8 @@ export function CommentsSidebar({
           filteredComments.map((comment) => (
             <div
               key={comment.id}
-              className={`comment-thread-card ${comment.resolved ? "resolved" : ""}`}
+              id={`comment-card-${comment.id}`}
+              className={`comment-thread-card ${comment.resolved ? "resolved" : ""} ${activeCommentId === comment.id ? "active-highlight" : ""}`}
             >
               {/* Comment Header */}
               <div className="comment-thread-header">
@@ -220,8 +256,13 @@ export function CommentsSidebar({
 
               {/* Selected quote if present */}
               {comment.selectionText && (
-                <div className="thread-selection-quote">
-                  "{comment.selectionText}"
+                <div
+                  className="thread-selection-quote"
+                  onClick={() => onCommentCardClick?.(comment.id)}
+                  title="Click to jump to this text in the document"
+                >
+                  &ldquo;{comment.selectionText}&rdquo;
+                  <span className="jump-indicator">↗ Jump to text</span>
                 </div>
               )}
 

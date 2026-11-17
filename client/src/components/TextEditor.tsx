@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import Quill from "quill";
 import QuillCursors from "quill-cursors";
 import { useParams } from "react-router";
@@ -18,7 +18,28 @@ import {
 import "quill/dist/quill.snow.css";
 import "quill-cursors/css";
 
-// Register QuillCursors module
+// Register custom Comment inline blot
+const Inline = Quill.import("blots/inline") as any;
+class CommentBlot extends Inline {
+  static blotName = "comment";
+  static tagName = "mark";
+  static className = "doc-comment-highlight";
+
+  static create(value: string | { id: string }) {
+    const node = super.create() as HTMLElement;
+    const commentId =
+      typeof value === "object" && value !== null ? value.id : String(value);
+    node.setAttribute("data-comment-id", commentId);
+    node.setAttribute("title", "Click to view comment");
+    return node;
+  }
+
+  static formats(node: HTMLElement) {
+    return node.getAttribute("data-comment-id") || true;
+  }
+}
+
+Quill.register(CommentBlot);
 Quill.register("modules/cursors", QuillCursors);
 
 const TOOLBAR_OPTIONS = [
@@ -47,10 +68,18 @@ export function TextEditor() {
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
   const [selectedText, setSelectedText] = useState("");
+  const [selectedRange, setSelectedRange] = useState<{
+    index: number;
+    length: number;
+  } | null>(null);
+  const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
   const [floatingCommentBtn, setFloatingCommentBtn] = useState<{
     x: number;
     y: number;
   } | null>(null);
+
+  const isCommentsOpenRef = useRef(false);
+  isCommentsOpenRef.current = isCommentsOpen;
 
   const {
     title,
@@ -101,23 +130,33 @@ export function TextEditor() {
       const range = quill.getSelection();
       if (range && range.length > 0) {
         const text = quill.getText(range.index, range.length).trim();
-        setSelectedText(text);
+        if (text) {
+          setSelectedText(text);
+          setSelectedRange({ index: range.index, length: range.length });
 
-        const bounds = quill.getBounds(range.index, range.length);
-        if (bounds) {
-          const editorElement = quill.root.parentElement;
-          const rect = editorElement?.getBoundingClientRect();
-          if (rect) {
-            setFloatingCommentBtn({
-              x: rect.left + bounds.left + bounds.width + 10,
-              y: rect.top + bounds.top - 10,
-            });
+          const bounds = quill.getBounds(range.index, range.length);
+          if (bounds) {
+            const editorElement = quill.root.parentElement;
+            const rect = editorElement?.getBoundingClientRect();
+            if (rect) {
+              setFloatingCommentBtn({
+                x: rect.left + bounds.left + bounds.width + 10,
+                y: rect.top + bounds.top - 10,
+              });
+            }
           }
         }
-      } else {
-        setSelectedText("");
+      } else if (range && range.length === 0) {
+        // Single click inside editor: dismiss floating button
         setFloatingCommentBtn(null);
+        // Only clear draft selection if comments sidebar is NOT open
+        if (!isCommentsOpenRef.current) {
+          setSelectedText("");
+          setSelectedRange(null);
+        }
       }
+      // Note: When range is null (blur), do NOT clear selectedText/selectedRange
+      // This preserves user's selected text while moving mouse or typing in comment box
     };
 
     quill.on("selection-change", handleSelection);
@@ -125,6 +164,131 @@ export function TextEditor() {
       quill.off("selection-change", handleSelection);
     };
   }, [quill]);
+
+  // Synchronize comment highlights on document text
+  useEffect(() => {
+    if (!quill || !isLoaded) return;
+
+    const syncCommentHighlights = () => {
+      const fullText = quill.getText();
+      if (!fullText) return;
+
+      // 1. Identify active (unresolved) comments with selection text
+      const activeComments = comments.filter(
+        (c) => !c.resolved && c.selectionText,
+      );
+      const activeCommentIds = new Set(activeComments.map((c) => c.id));
+
+      // 2. Unformat any existing marks that are resolved, deleted, or outdated
+      const existingMarks = quill.root.querySelectorAll<HTMLElement>(
+        ".doc-comment-highlight",
+      );
+      existingMarks.forEach((mark) => {
+        const id = mark.getAttribute("data-comment-id");
+        if (id && id !== "draft" && !activeCommentIds.has(id)) {
+          const blot = Quill.find(mark) as any;
+          if (blot && typeof blot.length === "function") {
+            const idx = quill.getIndex(blot);
+            const len = blot.length();
+            quill.formatText(idx, len, "comment", false, "silent");
+          }
+        }
+      });
+
+      // 3. Apply CommentBlot to all active comments
+      activeComments.forEach((comment) => {
+        let targetIndex = comment.range?.index;
+        let targetLength =
+          comment.range?.length || comment.selectionText!.length;
+
+        // If selectionText doesn't match text at range index, locate it in fullText
+        if (
+          targetIndex === undefined ||
+          fullText.substring(targetIndex, targetIndex + targetLength) !==
+            comment.selectionText
+        ) {
+          const found = fullText.indexOf(comment.selectionText!);
+          if (found !== -1) {
+            targetIndex = found;
+            targetLength = comment.selectionText!.length;
+          } else {
+            targetIndex = undefined;
+          }
+        }
+
+        if (targetIndex !== undefined) {
+          quill.formatText(
+            targetIndex,
+            targetLength,
+            "comment",
+            comment.id,
+            "silent",
+          );
+        }
+      });
+    };
+
+    syncCommentHighlights();
+    quill.on("text-change", syncCommentHighlights);
+    return () => {
+      quill.off("text-change", syncCommentHighlights);
+    };
+  }, [quill, comments, isLoaded]);
+
+  // Clicking on highlighted commented text in the document opens sidebar and jumps to that comment
+  useEffect(() => {
+    if (!quill) return;
+
+    const handleEditorClick = (e: MouseEvent) => {
+      const mark = (e.target as HTMLElement).closest(
+        ".doc-comment-highlight",
+      ) as HTMLElement | null;
+      if (mark) {
+        const commentId = mark.getAttribute("data-comment-id");
+        if (commentId && commentId !== "draft") {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsCommentsOpen(true);
+          setActiveCommentId(commentId);
+
+          mark.classList.add("pulse-active");
+          setTimeout(() => mark.classList.remove("pulse-active"), 2000);
+        }
+      }
+    };
+
+    const root = quill.root;
+    root.addEventListener("click", handleEditorClick);
+    return () => {
+      root.removeEventListener("click", handleEditorClick);
+    };
+  }, [quill]);
+
+  const handleJumpToCommentText = (commentId: string) => {
+    if (!quill) return;
+    setActiveCommentId(commentId);
+    const mark = quill.root.querySelector(
+      `[data-comment-id="${commentId}"]`,
+    ) as HTMLElement | null;
+    if (mark) {
+      mark.scrollIntoView({ behavior: "smooth", block: "center" });
+      mark.classList.add("pulse-active");
+      setTimeout(() => mark.classList.remove("pulse-active"), 2000);
+    }
+  };
+
+  const handleAddComment = (text: string, selectionText?: string) => {
+    addComment(text, selectionText, selectedRange || undefined);
+    setSelectedText("");
+    setSelectedRange(null);
+    setFloatingCommentBtn(null);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedText("");
+    setSelectedRange(null);
+    setFloatingCommentBtn(null);
+  };
 
   const editorRef = useCallback((wrapper: HTMLDivElement | null) => {
     if (!wrapper) return;
@@ -243,6 +407,9 @@ export function TextEditor() {
             <button
               type="button"
               className="btn-doc-side-comment"
+              onMouseDown={(e) => {
+                e.preventDefault();
+              }}
               onClick={() => setIsCommentsOpen(true)}
               title="Open comments"
             >
@@ -260,14 +427,20 @@ export function TextEditor() {
         {/* Slide-out Comments Sidebar */}
         <CommentsSidebar
           isOpen={isCommentsOpen}
-          onClose={() => setIsCommentsOpen(false)}
+          onClose={() => {
+            setIsCommentsOpen(false);
+            setActiveCommentId(null);
+          }}
           comments={comments}
           selectedText={selectedText}
-          onAddComment={addComment}
+          onAddComment={handleAddComment}
           onResolveComment={resolveComment}
           onReplyComment={replyComment}
           onDeleteComment={deleteComment}
           userRole={role}
+          activeCommentId={activeCommentId}
+          onClearSelection={handleClearSelection}
+          onCommentCardClick={handleJumpToCommentText}
         />
       </div>
 
@@ -281,6 +454,10 @@ export function TextEditor() {
             left: `${floatingCommentBtn.x}px`,
             top: `${floatingCommentBtn.y}px`,
             zIndex: 1000,
+          }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
           }}
           onClick={openCommentsWithSelection}
           title="Add comment to selected text"

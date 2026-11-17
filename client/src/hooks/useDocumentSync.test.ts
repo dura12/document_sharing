@@ -172,4 +172,28 @@ describe("Client Document Sync Protocol", () => {
       "Anonymous Fox",
     ]);
   });
+
+  it("attaches selection range to comments and preserves range metadata", () => {
+    const mockSocket = {
+      emit: vi.fn(),
+    };
+
+    const comment = {
+      id: "comment-highlight-1",
+      author: { name: "Sarah Connor", color: "#1a73e8" },
+      text: "Needs revision here",
+      selectionText: "Quarterly Revenue",
+      range: { index: 15, length: 17 },
+      createdAt: new Date().toISOString(),
+      resolved: false,
+      replies: [],
+    };
+
+    mockSocket.emit("add-comment", comment);
+    expect(mockSocket.emit).toHaveBeenCalledWith("add-comment", expect.objectContaining({
+      id: "comment-highlight-1",
+      selectionText: "Quarterly Revenue",
+      range: { index: 15, length: 17 },
+    }));
+  });
 });

@@ -26,7 +26,11 @@ export interface UseDocumentSyncReturn {
   comments: DocumentComment[];
   versions: DocumentVersion[];
   typingUsers: UserPresence[];
-  addComment: (text: string, selectionText?: string) => void;
+  addComment: (
+    text: string,
+    selectionText?: string,
+    range?: { index: number; length: number },
+  ) => void;
   resolveComment: (commentId: string) => void;
   replyComment: (commentId: string, reply: DocumentCommentReply) => void;
   deleteComment: (commentId: string) => void;
@@ -391,7 +395,11 @@ export function useDocumentSync(
   );
 
   const addComment = useCallback(
-    (text: string, selectionText?: string) => {
+    (
+      text: string,
+      selectionText?: string,
+      range?: { index: number; length: number },
+    ) => {
       if (!socket || roleRef.current === "viewer") return;
       const newComment: DocumentComment = {
         id: crypto.randomUUID(),
@@ -402,6 +410,7 @@ export function useDocumentSync(
         },
         text,
         selectionText,
+        range,
         createdAt: new Date().toISOString(),
         resolved: false,
         replies: [],
