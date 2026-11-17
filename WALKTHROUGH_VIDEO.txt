@@ -2,8 +2,7 @@ Ajaia LLC - AI-Native Full Stack Developer Assignment
 Candidate: Dureti Mohammedsani (dureti104@gmail.com)
 
 Walkthrough Video URL:
-https://www.loom.com/share/placeholder-ajaia-walkthrough
-(Replace the link above with your recorded public Loom, YouTube, or Google Drive video URL)
+https://www.loom.com/share/1aeec7095dd34e038bd24f75aec82dcd
 
 Notes:
 - The complete step-by-step 3-5 minute presentation script is available in WALKTHROUGH_SCRIPT.md.

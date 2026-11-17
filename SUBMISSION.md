@@ -4,7 +4,7 @@
 **Target Role:** AI-Native Full Stack Developer  
 **Company:** Ajaia LLC  
 **Repository:** [https://github.com/dura12/document_sharing.git](https://github.com/dura12/document_sharing.git)  
-**Walkthrough Video Link:** [https://www.loom.com/share/placeholder-ajaia-walkthrough](https://www.loom.com/share/placeholder-ajaia-walkthrough) *(or public video URL)*  
+**Walkthrough Video Link:** [https://www.loom.com/share/1aeec7095dd34e038bd24f75aec82dcd](https://www.loom.com/share/1aeec7095dd34e038bd24f75aec82dcd)  
 **Live Deployment URL:** [https://document-sharing-client.vercel.app](https://document-sharing-client.vercel.app) *(or your deployed Render/Vercel URL)*  
 **Google Drive Submission Folder:** [https://drive.google.com/drive/folders/placeholder-ajaia-submission](https://drive.google.com/drive/folders/placeholder-ajaia-submission)  
 
