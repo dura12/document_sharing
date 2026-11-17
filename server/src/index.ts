@@ -42,10 +42,12 @@ app.use(express.json());
 app.use("/api/auth", authRouter);
 app.use("/api/documents", documentRouter);
 
-// Health check endpoint
-app.get("/api/health", (_req, res) => {
+// Health check endpoint (supports both /health and /api/health for Render/monitoring)
+const healthHandler = (_req: express.Request, res: express.Response) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
+};
+app.get("/health", healthHandler);
+app.get("/api/health", healthHandler);
 
 const httpServer = createServer(app);
 
