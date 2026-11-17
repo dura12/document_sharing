@@ -1,8 +1,8 @@
-# Google Docs Clone
+# Ajaia Docs (Ajaia LLC)
 
-A real-time collaborative document editor built with React 19, Socket.IO, Quill 2, Quill Cursors, and MongoDB.
+A modern, real-time collaborative document platform by **Ajaia LLC** built with React 19, Socket.IO, Quill 2, Quill Cursors, and MongoDB.
 
-Multiple users can simultaneously edit the same document with real-time delta synchronization, live collaborator cursors, presence indicators, document title management, and automatic debounced persistence.
+Multiple users can simultaneously edit documents with real-time delta synchronization, live collaborator cursors, presence indicators, role-based sharing permissions (Owner, Editor, Commenter, Viewer), in-text comment highlights with two-way navigation, version history snapshots, and cloud persistence.
 
 ---
 

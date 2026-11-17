@@ -10,8 +10,8 @@ function getInitials(name: string): string {
 describe("Client Document Sync Protocol", () => {
   it("formats title correctly for document tab", () => {
     const rawTitle = "Sprint Planning";
-    const formatted = `${rawTitle} - Google Docs Clone`;
-    expect(formatted).toBe("Sprint Planning - Google Docs Clone");
+    const formatted = `${rawTitle} - Ajaia Docs`;
+    expect(formatted).toBe("Sprint Planning - Ajaia Docs");
   });
 
   it("handles anonymous collaborator initials extraction", () => {

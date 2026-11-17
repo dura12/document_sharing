@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { SERVER_URL } from "@/config/env";
 import { useAuth } from "@/context/AuthContext";
 import { AuthModal } from "@/components/AuthModal";
+import { AjaiaLogo } from "@/components/AjaiaLogo";
 
 interface DocItem {
   id: string;
@@ -87,11 +88,8 @@ export function DocumentDashboard() {
       {/* Top Navigation Bar */}
       <header className="dashboard-nav">
         <div className="dashboard-nav-left">
-          <div className="docs-brand" onClick={() => navigate("/")}>
-            <svg viewBox="0 0 24 24" width="36" height="36" fill="#4285F4">
-              <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
-            </svg>
-            <span className="brand-title">Docs</span>
+          <div className="docs-brand" onClick={() => navigate("/")} title="Ajaia LLC">
+            <AjaiaLogo size={36} showWordmark={true} tagline="Collaborative Docs" />
           </div>
         </div>
 

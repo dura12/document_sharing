@@ -117,7 +117,7 @@ export function useDocumentSync(
       }
 
       setTitle(doc.title || "Untitled Document");
-      document.title = `${doc.title || "Untitled Document"} - Google Docs Clone`;
+      document.title = `${doc.title || "Untitled Document"} - Ajaia Docs`;
       setIsLoaded(true);
       setSaveStatus("saved");
     };
@@ -358,7 +358,7 @@ export function useDocumentSync(
 
     const handleTitleUpdated = (newTitle: string) => {
       setTitle(newTitle);
-      document.title = `${newTitle} - Google Docs Clone`;
+      document.title = `${newTitle} - Ajaia Docs`;
     };
 
     socket.on("title-updated", handleTitleUpdated);
@@ -385,7 +385,7 @@ export function useDocumentSync(
     (newTitle: string) => {
       if (roleRef.current === "viewer" || roleRef.current === "commenter") return;
       setTitle(newTitle);
-      document.title = `${newTitle} - Google Docs Clone`;
+      document.title = `${newTitle} - Ajaia Docs`;
       if (socket) {
         setSaveStatus("saving");
         socket.emit("change-title", newTitle);
