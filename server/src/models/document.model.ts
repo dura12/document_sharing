@@ -10,6 +10,7 @@ import type {
 export interface IDocument {
   _id: string;
   title: string;
+  ownerEmail?: string;
   data: Delta;
   defaultRole: UserRole;
   collaboratorRoles: CollaboratorRoleAssignment[];
@@ -21,6 +22,7 @@ const documentSchema = new Schema<IDocument>(
   {
     _id: { type: String, required: true },
     title: { type: String, default: "Untitled Document" },
+    ownerEmail: { type: String, default: null },
     data: { type: Schema.Types.Mixed, default: { ops: [] } },
     defaultRole: {
       type: String,

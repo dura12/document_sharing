@@ -320,6 +320,27 @@ export function TextEditor() {
   const openCommentsCount = comments.filter((c) => !c.resolved).length;
   const canEdit = role === "owner" || role === "editor";
 
+  const handleImportText = (content: string, filename: string) => {
+    if (!quill) return;
+    if (!canEdit) {
+      alert("You do not have permission to edit this document.");
+      return;
+    }
+
+    const currentLength = quill.getLength();
+    if (currentLength <= 1) {
+      quill.setText(content + "\n", "user");
+    } else {
+      const selection = quill.getSelection();
+      const insertIndex = selection ? selection.index : currentLength - 1;
+      quill.insertText(insertIndex, "\n" + content + "\n", "user");
+    }
+
+    if (!title || title === "Untitled Document") {
+      updateTitle(filename.replace(/\.[^/.]+$/, ""));
+    }
+  };
+
   return (
     <div className={`editor-shell ${editorMode}`}>
       <Header
@@ -339,6 +360,7 @@ export function TextEditor() {
         onExportMarkdown={() => exportToMarkdown(title, quill)}
         onExportHtml={() => exportToHtml(title, quill)}
         onExportTxt={() => exportToTxt(title, quill)}
+        onImportText={handleImportText}
       />
 
       {/* Role Notice Banner */}

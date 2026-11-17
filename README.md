@@ -76,22 +76,44 @@ cd client && npm install
 ### 2. Run Tests
 
 ```bash
-# Server tests (5 tests)
+# Server tests (10 integration & e2e tests)
 npm test --prefix server
 
-# Client tests (5 tests)
+# Client tests (16 unit & sync tests)
 npm test --prefix client
 ```
 
 ### 3. Run Development Servers
 
 ```bash
-# Terminal 1 - Server
-cd server && npm run dev
+# Terminal 1 - Server (Port 3001)
+npm run dev --prefix server
 
-# Terminal 2 - Client
-cd client && npm run dev
+# Terminal 2 - Client (Port 5173)
+npm run dev --prefix client
 ```
+
+---
+
+## Seeded Test Accounts
+
+The MongoDB Atlas instance includes seeded accounts for testing real-time collaboration and role-based sharing:
+
+| Name | Email | Password | Role |
+| :--- | :--- | :--- | :--- |
+| **Dureti Mohammedsani** | `dureti104@gmail.com` | `1234` | Owner |
+| **Sarah Connor** | `sarah.connor@gmail.com` | `1234` | Editor |
+| **Alex Morgan** | `alex.morgan@gmail.com` | `1234` | Commenter |
+| **David Kim** | `david.kim@gmail.com` | `1234` | Viewer |
+
+---
+
+## Documentation Deliverables
+
+- [SUBMISSION.md](SUBMISSION.md) &mdash; Complete assignment submission details, checklist, and scope breakdown.
+- [ARCHITECTURE.md](ARCHITECTURE.md) &mdash; Full stack architecture note, concurrency model, and engineering decisions.
+- [AI_WORKFLOW.md](AI_WORKFLOW.md) &mdash; AI tools utilized, material acceleration, rejected suggestions, and verification procedures.
+- [DECISION_RECORD.md](DECISION_RECORD.md) &mdash; Architectural trade-offs, bug fixes, and technical decisions made during refactoring.
 
 ---
 

@@ -30,6 +30,7 @@ interface HeaderProps {
   onExportPdf?: () => void;
   onExportHtml?: () => void;
   onExportTxt?: () => void;
+  onImportText?: (content: string, filename: string) => void;
 }
 
 export function Header({
@@ -49,6 +50,7 @@ export function Header({
   onExportPdf,
   onExportHtml,
   onExportTxt,
+  onImportText,
 }: HeaderProps) {
   const navigate = useNavigate();
   const { user, logout, openAuthModal } = useAuth();
@@ -58,6 +60,29 @@ export function Header({
 
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const fileMenuRef = useRef<HTMLDivElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    if (extension !== "txt" && extension !== "md") {
+      alert("Please upload a .txt or .md file.");
+      e.target.value = "";
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      onImportText?.(text, file.name);
+    } catch (err) {
+      console.error("Failed to read file:", err);
+      alert("Failed to read the selected file.");
+    } finally {
+      if (e.target) e.target.value = "";
+    }
+  };
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -209,6 +234,27 @@ export function Header({
                   >
                     <span>🕒 Version History</span>
                   </div>
+
+                  {onImportText && !isReadOnly && !isCommentOnly && (
+                    <div
+                      className="menu-dropdown-item"
+                      onClick={() => {
+                        setIsFileMenuOpen(false);
+                        importInputRef.current?.click();
+                      }}
+                      title="Import content from a .txt or .md file"
+                    >
+                      <span>📥 Import File (.txt, .md)</span>
+                    </div>
+                  )}
+
+                  <input
+                    type="file"
+                    ref={importInputRef}
+                    accept=".txt,.md"
+                    onChange={handleImportFile}
+                    style={{ display: "none" }}
+                  />
 
                   <div className="menu-dropdown-divider" />
                   <div className="menu-dropdown-header-label">Download As:</div>
