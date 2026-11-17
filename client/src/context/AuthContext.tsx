@@ -69,7 +69,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsAuthModalOpen(false);
       return { success: true };
     } catch {
-      return { success: false, error: "Unable to connect to authentication server" };
+      const isMisconfiguredProd =
+        typeof window !== "undefined" &&
+        window.location.hostname !== "localhost" &&
+        SERVER_URL.includes("localhost");
+      return {
+        success: false,
+        error: isMisconfiguredProd
+          ? "Backend server is not configured (VITE_SERVER_URL is pointing to localhost). Set VITE_SERVER_URL in Vercel to your Render backend URL."
+          : "Unable to connect to authentication server. The server may be starting up — please try again in a few seconds.",
+      };
     }
   };
 
@@ -89,7 +98,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsAuthModalOpen(false);
       return { success: true };
     } catch {
-      return { success: false, error: "Unable to connect to authentication server" };
+      const isMisconfiguredProd =
+        typeof window !== "undefined" &&
+        window.location.hostname !== "localhost" &&
+        SERVER_URL.includes("localhost");
+      return {
+        success: false,
+        error: isMisconfiguredProd
+          ? "Backend server is not configured (VITE_SERVER_URL is pointing to localhost). Set VITE_SERVER_URL in Vercel to your Render backend URL."
+          : "Unable to connect to authentication server. The server may be starting up — please try again in a few seconds.",
+      };
     }
   };
 

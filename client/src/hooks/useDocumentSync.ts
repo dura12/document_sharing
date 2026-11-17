@@ -74,6 +74,9 @@ export function useDocumentSync(
   const roleRef = useRef<UserRole>(initialRole);
   roleRef.current = role;
 
+  const isLoadedRef = useRef<boolean>(false);
+  isLoadedRef.current = isLoaded;
+
   const cursorsModuleRef = useRef<any>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -91,12 +94,23 @@ export function useDocumentSync(
     }
   }, [quill]);
 
-  // Request document on mount / socket connect / user change
+  // Request document on mount / socket connect / reconnect / user change
   useEffect(() => {
-    if (!socket || !documentId) return;
+    if (!socket || !quill || !documentId) return;
 
     setIsLoaded(false);
+    isLoadedRef.current = false;
     setSaveStatus("saving");
+
+    const userPayload = userOverride
+      ? { ...userOverride, role: urlRole || userOverride.role }
+      : urlRole
+      ? { role: urlRole }
+      : undefined;
+
+    const joinDocument = () => {
+      socket.emit("get-document", documentId, userPayload as any);
+    };
 
     const handleLoadDocument = (doc: DocumentData) => {
       const assignedRole = doc.role || roleRef.current || "editor";
@@ -107,33 +121,40 @@ export function useDocumentSync(
       setComments(doc.comments || []);
       setVersions(doc.versions || []);
 
-      if (quill) {
-        quill.setContents(doc.data as any);
-        if (assignedRole === "viewer" || assignedRole === "commenter") {
-          quill.disable();
-        } else {
-          quill.enable();
-        }
+      // Preserve selection across reconnect reloads when possible
+      const prevSelection = isLoadedRef.current ? quill.getSelection() : null;
+      quill.setContents((doc.data || { ops: [] }) as any, "api");
+      if (prevSelection) {
+        const maxLen = Math.max(0, quill.getLength() - 1);
+        const safeIndex = Math.min(prevSelection.index, maxLen);
+        const safeLen = Math.min(prevSelection.length, maxLen - safeIndex);
+        quill.setSelection(safeIndex, safeLen, "silent");
+      }
+
+      if (assignedRole === "viewer" || assignedRole === "commenter") {
+        quill.disable();
+      } else {
+        quill.enable();
       }
 
       setTitle(doc.title || "Untitled Document");
       document.title = `${doc.title || "Untitled Document"} - Ajaia Docs`;
+      isLoadedRef.current = true;
       setIsLoaded(true);
       setSaveStatus("saved");
     };
 
     socket.on("load-document", handleLoadDocument);
+    socket.on("connect", joinDocument);
 
-    const userPayload = userOverride
-      ? { ...userOverride, role: urlRole || userOverride.role }
-      : urlRole
-      ? { role: urlRole }
-      : undefined;
-
-    socket.emit("get-document", documentId, userPayload as any);
+    // Join immediately if already connected; otherwise the "connect" listener will trigger it
+    if (socket.connected) {
+      joinDocument();
+    }
 
     return () => {
       socket.off("load-document", handleLoadDocument);
+      socket.off("connect", joinDocument);
     };
   }, [
     socket,
@@ -156,6 +177,7 @@ export function useDocumentSync(
       source: string,
     ) => {
       if (source !== "user") return;
+      if (!isLoadedRef.current) return;
 
       // Viewer / Commenter cannot edit text
       if (roleRef.current === "viewer" || roleRef.current === "commenter") return;
@@ -180,14 +202,15 @@ export function useDocumentSync(
         clearTimeout(typingTimerRef.current);
       }
     };
-  }, [socket, quill, role]);
+  }, [socket, quill]);
 
   // Handle remote changes incoming from server
   useEffect(() => {
     if (!socket || !quill) return;
 
     const handleReceiveChanges = (delta: Delta) => {
-      quill.updateContents(delta as any);
+      if (!delta || !Array.isArray(delta.ops)) return;
+      quill.updateContents(delta as any, "api");
     };
 
     socket.on("receive-changes", handleReceiveChanges);

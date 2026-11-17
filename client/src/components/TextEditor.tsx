@@ -107,20 +107,24 @@ export function TextEditor() {
     user ? { name: user.name, color: user.color, email: user.email } : null,
   );
 
-  // Sync effective editor mode with role restrictions
+  // Sync effective editor mode with role restrictions and loaded state
   useEffect(() => {
+    if (!quill) return;
+    if (!isLoaded) {
+      quill.disable();
+      return;
+    }
     if (role === "viewer") {
       setEditorMode("viewing");
-      quill?.disable();
+      quill.disable();
     } else if (role === "commenter") {
       setEditorMode("suggesting");
-      quill?.disable();
-    } else if (editorMode === "viewing") {
-      quill?.disable();
+      quill.disable();
     } else {
-      quill?.enable();
+      setEditorMode("editing");
+      quill.enable();
     }
-  }, [role, editorMode, quill]);
+  }, [role, isLoaded, quill]);
 
   // Track selection for commenting and floating action button
   useEffect(() => {
@@ -169,20 +173,25 @@ export function TextEditor() {
   useEffect(() => {
     if (!quill || !isLoaded) return;
 
-    const syncCommentHighlights = () => {
-      const fullText = quill.getText();
-      if (!fullText) return;
+    let syncTimer: ReturnType<typeof setTimeout> | null = null;
 
-      // 1. Identify active (unresolved) comments with selection text
+    const syncCommentHighlights = () => {
       const activeComments = comments.filter(
         (c) => !c.resolved && c.selectionText,
       );
-      const activeCommentIds = new Set(activeComments.map((c) => c.id));
-
-      // 2. Unformat any existing marks that are resolved, deleted, or outdated
       const existingMarks = quill.root.querySelectorAll<HTMLElement>(
         ".doc-comment-highlight",
       );
+
+      // Fast path: nothing to highlight and nothing to clean up
+      if (activeComments.length === 0 && existingMarks.length === 0) return;
+
+      const fullText = quill.getText();
+      if (!fullText) return;
+
+      const activeCommentIds = new Set(activeComments.map((c) => c.id));
+
+      // 1. Unformat any existing marks that are resolved, deleted, or outdated
       existingMarks.forEach((mark) => {
         const id = mark.getAttribute("data-comment-id");
         if (id && id !== "draft" && !activeCommentIds.has(id)) {
@@ -195,13 +204,12 @@ export function TextEditor() {
         }
       });
 
-      // 3. Apply CommentBlot to all active comments
+      // 2. Apply CommentBlot to all active comments (skip if already formatted)
       activeComments.forEach((comment) => {
         let targetIndex = comment.range?.index;
         let targetLength =
           comment.range?.length || comment.selectionText!.length;
 
-        // If selectionText doesn't match text at range index, locate it in fullText
         if (
           targetIndex === undefined ||
           fullText.substring(targetIndex, targetIndex + targetLength) !==
@@ -217,21 +225,30 @@ export function TextEditor() {
         }
 
         if (targetIndex !== undefined) {
-          quill.formatText(
-            targetIndex,
-            targetLength,
-            "comment",
-            comment.id,
-            "silent",
-          );
+          const existingFormat = quill.getFormat(targetIndex, targetLength);
+          if (existingFormat.comment !== comment.id) {
+            quill.formatText(
+              targetIndex,
+              targetLength,
+              "comment",
+              comment.id,
+              "silent",
+            );
+          }
         }
       });
     };
 
+    const scheduleHighlightSync = () => {
+      if (syncTimer) clearTimeout(syncTimer);
+      syncTimer = setTimeout(syncCommentHighlights, 150);
+    };
+
     syncCommentHighlights();
-    quill.on("text-change", syncCommentHighlights);
+    quill.on("text-change", scheduleHighlightSync);
     return () => {
-      quill.off("text-change", syncCommentHighlights);
+      if (syncTimer) clearTimeout(syncTimer);
+      quill.off("text-change", scheduleHighlightSync);
     };
   }, [quill, comments, isLoaded]);
 

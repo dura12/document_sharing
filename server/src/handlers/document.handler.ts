@@ -101,6 +101,7 @@ function computeUserRole(
 
 async function getOrCreateActiveDocument(
   id: string,
+  creatorEmail?: string,
 ): Promise<ActiveDocument> {
   const existing = activeDocuments.get(id);
   if (existing) return existing;
@@ -132,6 +133,11 @@ async function getOrCreateActiveDocument(
         comments = (dbDoc.comments as DocumentComment[]) || [];
         versions = (dbDoc.versions as DocumentVersion[]) || [];
       } else {
+        const normalizedCreator = creatorEmail?.toLowerCase().trim();
+        if (normalizedCreator) {
+          collaboratorRoles.set(normalizedCreator, "owner");
+        }
+
         const initialVersion: DocumentVersion = {
           id: crypto.randomUUID(),
           title,
@@ -145,9 +151,12 @@ async function getOrCreateActiveDocument(
         await Document.create({
           _id: id,
           title,
+          ownerEmail: normalizedCreator || null,
           data: { ops: [] },
           defaultRole: "editor",
-          collaboratorRoles: [],
+          collaboratorRoles: normalizedCreator
+            ? [{ email: normalizedCreator, role: "owner" }]
+            : [],
           comments: [],
           versions: [initialVersion],
         });
@@ -304,6 +313,12 @@ export function registerDocumentHandlers(
     }
   }
 
+  function getEffectiveRole(activeDoc: ActiveDocument): UserRole {
+    const userKey = getUserSessionKey(currentUser, socket.id);
+    const liveRole = activeDoc.collaborators.get(userKey)?.user.role;
+    return liveRole || currentUser?.role || activeDoc.defaultRole || "editor";
+  }
+
   socket.on("get-document", async (documentId, userOverride) => {
     if (!documentId || typeof documentId !== "string") return;
 
@@ -311,7 +326,10 @@ export function registerDocumentHandlers(
       await leaveCurrentDocument();
     }
 
-    const activeDoc = await getOrCreateActiveDocument(documentId);
+    const activeDoc = await getOrCreateActiveDocument(
+      documentId,
+      userOverride?.email,
+    );
     currentDocId = documentId;
 
     const assignedRole = computeUserRole(
@@ -374,16 +392,17 @@ export function registerDocumentHandlers(
       return;
     }
 
+    const activeDoc = activeDocuments.get(currentDocId);
+    if (!activeDoc) return;
+
     // Role Enforcement: Viewers and Commenters cannot edit document content
-    if (currentUser?.role === "viewer" || currentUser?.role === "commenter") {
+    const effectiveRole = getEffectiveRole(activeDoc);
+    if (effectiveRole === "viewer" || effectiveRole === "commenter") {
       console.warn(
-        `[collab] Rejected edit from ${currentUser.name}: role '${currentUser.role}' is read-only.`,
+        `[collab] Rejected edit from ${currentUser?.name || socket.id}: role '${effectiveRole}' is read-only.`,
       );
       return;
     }
-
-    const activeDoc = activeDocuments.get(currentDocId);
-    if (!activeDoc) return;
 
     // 1. Broadcast delta immediately to other clients in room
     socket.broadcast.to(currentDocId).emit("receive-changes", incomingDelta);
@@ -402,14 +421,16 @@ export function registerDocumentHandlers(
   socket.on("change-title", async (newTitle) => {
     if (!currentDocId || typeof newTitle !== "string") return;
 
+    const activeDoc = activeDocuments.get(currentDocId);
+    if (!activeDoc) return;
+
     // Role Enforcement: Viewers and Commenters cannot rename document
-    if (currentUser?.role === "viewer" || currentUser?.role === "commenter") {
+    const effectiveRole = getEffectiveRole(activeDoc);
+    if (effectiveRole === "viewer" || effectiveRole === "commenter") {
       return;
     }
 
     const trimmed = newTitle.trim() || "Untitled Document";
-    const activeDoc = activeDocuments.get(currentDocId);
-    if (!activeDoc) return;
 
     activeDoc.title = trimmed;
     scheduleSave(io, activeDoc, 500);

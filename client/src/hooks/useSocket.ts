@@ -18,8 +18,12 @@ export function useSocket(): UseSocketReturn {
 
   useEffect(() => {
     const s: TypedSocket = io(SERVER_URL, {
-      reconnectionAttempts: 10,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      transports: ["websocket", "polling"],
     });
 
     s.on("connect", () => {
