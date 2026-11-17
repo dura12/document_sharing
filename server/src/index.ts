@@ -12,11 +12,27 @@ import {
 } from "./handlers/document.handler.js";
 import type { ClientToServerEvents, ServerToClientEvents } from "./types/index.js";
 
+const isOriginAllowed = (origin?: string): boolean => {
+  if (!origin) return true;
+  if (env.CLIENT_ORIGIN === "*") return true;
+  const allowedList = env.CLIENT_ORIGIN.split(",").map((o) =>
+    o.trim().replace(/\/$/, ""),
+  );
+  const normalized = origin.replace(/\/$/, "");
+  return (
+    allowedList.includes(normalized) ||
+    normalized.endsWith(".vercel.app") ||
+    normalized.startsWith("http://localhost:")
+  );
+};
+
 const app = express();
 
 app.use(
   cors({
-    origin: env.CLIENT_ORIGIN,
+    origin: (origin, callback) => {
+      callback(null, isOriginAllowed(origin));
+    },
     credentials: true,
   }),
 );
@@ -35,7 +51,9 @@ const httpServer = createServer(app);
 
 const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   cors: {
-    origin: env.CLIENT_ORIGIN,
+    origin: (origin, callback) => {
+      callback(null, isOriginAllowed(origin));
+    },
     methods: ["GET", "POST"],
     credentials: true,
   },
