@@ -170,19 +170,11 @@ export function TextEditor() {
         collaboratorRoles={collaboratorRoles}
         onUpdatePermissions={updatePermissions}
         typingUsers={typingUsers}
-        openCommentsCount={openCommentsCount}
-        isCommentsOpen={isCommentsOpen}
-        onToggleComments={() => setIsCommentsOpen(!isCommentsOpen)}
         onOpenVersionHistory={() => setIsVersionHistoryOpen(true)}
         onExportPdf={() => exportToPdf(title)}
         onExportMarkdown={() => exportToMarkdown(title, quill)}
         onExportHtml={() => exportToHtml(title, quill)}
         onExportTxt={() => exportToTxt(title, quill)}
-        editorMode={editorMode}
-        onModeChange={(mode) => {
-          if (role === "viewer" || role === "commenter") return;
-          setEditorMode(mode);
-        }}
       />
 
       {/* Role Notice Banner */}
@@ -212,6 +204,26 @@ export function TextEditor() {
 
       <div className="editor-main-layout">
         <div className="editor-workspace" ref={editorRef} />
+
+        {/* Comment button docked to the right of the document */}
+        {!isCommentsOpen && (
+          <div className="doc-side-comment-dock">
+            <button
+              type="button"
+              className="btn-doc-side-comment"
+              onClick={() => setIsCommentsOpen(true)}
+              title="Open comments"
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18zM18 14H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z" />
+              </svg>
+              <span>Comments</span>
+              {openCommentsCount > 0 && (
+                <span className="comments-count-badge">{openCommentsCount}</span>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Slide-out Comments Sidebar */}
         <CommentsSidebar

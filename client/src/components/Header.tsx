@@ -24,16 +24,11 @@ interface HeaderProps {
     roles: CollaboratorRoleAssignment[],
   ) => void;
   typingUsers?: UserPresence[];
-  openCommentsCount?: number;
-  isCommentsOpen?: boolean;
-  onToggleComments?: () => void;
   onOpenVersionHistory?: () => void;
   onExportMarkdown?: () => void;
   onExportPdf?: () => void;
   onExportHtml?: () => void;
   onExportTxt?: () => void;
-  editorMode?: "editing" | "suggesting" | "viewing";
-  onModeChange?: (mode: "editing" | "suggesting" | "viewing") => void;
 }
 
 export function Header({
@@ -48,27 +43,20 @@ export function Header({
   collaboratorRoles = [],
   onUpdatePermissions,
   typingUsers = [],
-  openCommentsCount = 0,
-  isCommentsOpen = false,
-  onToggleComments,
   onOpenVersionHistory,
   onExportMarkdown,
   onExportPdf,
   onExportHtml,
   onExportTxt,
-  editorMode = "editing",
-  onModeChange,
 }: HeaderProps) {
   const navigate = useNavigate();
   const { user, logout, openAuthModal } = useAuth();
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isFileMenuOpen, setIsFileMenuOpen] = useState(false);
-  const [isModeMenuOpen, setIsModeMenuOpen] = useState(false);
 
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const fileMenuRef = useRef<HTMLDivElement>(null);
-  const modeMenuRef = useRef<HTMLDivElement>(null);
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -84,12 +72,6 @@ export function Header({
         !fileMenuRef.current.contains(event.target as Node)
       ) {
         setIsFileMenuOpen(false);
-      }
-      if (
-        modeMenuRef.current &&
-        !modeMenuRef.current.contains(event.target as Node)
-      ) {
-        setIsModeMenuOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -294,86 +276,8 @@ export function Header({
         </div>
       </div>
 
-      {/* Right Section: Mode Selector, Comments, Collaborators, Share Button & Profile */}
+      {/* Right Section: Collaborators, Share Button & Profile */}
       <div className="doc-header-right">
-        {/* Editor Mode Selector (Editing, Suggesting, Viewing) */}
-        <div className="mode-selector-wrapper" ref={modeMenuRef}>
-          {isReadOnly ? (
-            <span className="mode-badge-lock viewing" title="Viewing only">
-              👁️ Viewing
-            </span>
-          ) : isCommentOnly ? (
-            <span className="mode-badge-lock suggesting" title="Commenting only">
-              💡 Suggesting
-            </span>
-          ) : (
-            <>
-              <button
-                type="button"
-                className="btn-mode-toggle"
-                onClick={() => setIsModeMenuOpen(!isModeMenuOpen)}
-                title="Switch editing mode"
-              >
-                {editorMode === "editing" && "✏️ Editing"}
-                {editorMode === "suggesting" && "💡 Suggesting"}
-                {editorMode === "viewing" && "👁️ Viewing"}
-                <span className="dropdown-arrow">▾</span>
-              </button>
-
-              {isModeMenuOpen && (
-                <div className="mode-dropdown-menu">
-                  <div
-                    className={`mode-dropdown-item ${editorMode === "editing" ? "active" : ""}`}
-                    onClick={() => {
-                      onModeChange?.("editing");
-                      setIsModeMenuOpen(false);
-                    }}
-                  >
-                    <strong>✏️ Editing</strong>
-                    <span>Edit document directly</span>
-                  </div>
-                  <div
-                    className={`mode-dropdown-item ${editorMode === "suggesting" ? "active" : ""}`}
-                    onClick={() => {
-                      onModeChange?.("suggesting");
-                      setIsModeMenuOpen(false);
-                    }}
-                  >
-                    <strong>💡 Suggesting</strong>
-                    <span>Edits become suggestions and comments</span>
-                  </div>
-                  <div
-                    className={`mode-dropdown-item ${editorMode === "viewing" ? "active" : ""}`}
-                    onClick={() => {
-                      onModeChange?.("viewing");
-                      setIsModeMenuOpen(false);
-                    }}
-                  >
-                    <strong>👁️ Viewing</strong>
-                    <span>Read or print final document</span>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Comments Sidebar Toggle Button */}
-        <button
-          type="button"
-          className={`btn-comments-toggle ${isCommentsOpen ? "active" : ""}`}
-          onClick={onToggleComments}
-          title="Open comments"
-        >
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-            <path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18zM18 14H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z" />
-          </svg>
-          Comments
-          {openCommentsCount > 0 && (
-            <span className="comments-count-pill">{openCommentsCount}</span>
-          )}
-        </button>
-
         {/* Collaborators Avatar Stack with Active Pulse */}
         <div
           className="collaborators-group"
