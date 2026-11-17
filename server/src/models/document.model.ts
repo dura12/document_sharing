@@ -51,6 +51,10 @@ const documentSchema = new Schema<IDocument>(
           },
           text: { type: String, required: true },
           selectionText: { type: String },
+          range: {
+            index: { type: Number },
+            length: { type: Number },
+          },
           createdAt: { type: String, required: true },
           resolved: { type: Boolean, default: false },
           replies: [

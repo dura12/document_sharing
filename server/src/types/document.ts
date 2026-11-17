@@ -31,6 +31,10 @@ export interface DocumentComment {
   };
   text: string;
   selectionText?: string;
+  range?: {
+    index: number;
+    length: number;
+  };
   createdAt: string;
   resolved: boolean;
   replies: DocumentCommentReply[];
